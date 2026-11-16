@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // No Node (or any) ambient types: core must run in a webview.
+    "types": []
+  },
+  "include": ["src", "test"]
+}

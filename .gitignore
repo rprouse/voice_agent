@@ -365,3 +365,6 @@ repomix-output.txt
 # SonarQube
 .sonarqube/
 coverage.xml
+
+# pnpm workspace packages (the NuGet rule above would otherwise ignore them)
+!/packages/*
