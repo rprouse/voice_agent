@@ -5,15 +5,11 @@ export type Mode = "text" | "voice";
 
 /** Short-lived credential for one conversation. Voice uses WebRTC, text uses WebSocket. */
 export type AgentCredential =
-  | { kind: "conversation-token"; token: string }
-  | { kind: "signed-url"; url: string };
+  { kind: "conversation-token"; token: string } | { kind: "signed-url"; url: string };
 
 export type AgentActivity = "listening" | "speaking";
 
-export type DisconnectReason =
-  | { by: "user" }
-  | { by: "agent" }
-  | { by: "error"; message: string };
+export type DisconnectReason = { by: "user" } | { by: "agent" } | { by: "error"; message: string };
 
 export interface TransportHandlers {
   /** A finished message. In voice mode this includes the user's transcribed speech. */

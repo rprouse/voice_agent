@@ -19,7 +19,10 @@ export interface TranscriptEntry {
  * voice (or reconnecting after a timeout) doesn't lose the thread. Returns null when there
  * is nothing worth sending.
  */
-export function buildContext(entries: readonly TranscriptEntry[], maxEntries: number): string | null {
+export function buildContext(
+  entries: readonly TranscriptEntry[],
+  maxEntries: number,
+): string | null {
   if (maxEntries <= 0) return null;
   const usable = entries.filter((e) => e.status === "final" && e.text.trim() !== "");
   const recent = usable.slice(-maxEntries);

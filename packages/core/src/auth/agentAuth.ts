@@ -81,10 +81,16 @@ export class ElevenLabsAuth implements AgentAuth {
 function errorForStatus(status: number, body: string): AppError {
   const detail = body ? ` ${body.slice(0, 200)}` : "";
   if (status === 401 || status === 403) {
-    return new AppError("auth-failed", `ElevenLabs rejected the API key (HTTP ${String(status)}).${detail}`);
+    return new AppError(
+      "auth-failed",
+      `ElevenLabs rejected the API key (HTTP ${String(status)}).${detail}`,
+    );
   }
   if (status === 404) {
-    return new AppError("agent-not-found", `ElevenLabs couldn't find the agent (HTTP 404).${detail}`);
+    return new AppError(
+      "agent-not-found",
+      `ElevenLabs couldn't find the agent (HTTP 404).${detail}`,
+    );
   }
   return new AppError("network", `ElevenLabs request failed (HTTP ${String(status)}).${detail}`);
 }

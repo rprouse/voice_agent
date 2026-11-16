@@ -26,7 +26,9 @@ describe("ElevenLabsAuth", () => {
       kind: "conversation-token",
       token: "tok123",
     });
-    expect(calls[0]?.url).toBe("https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=agent_abc");
+    expect(calls[0]?.url).toBe(
+      "https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=agent_abc",
+    );
     expect(calls[0]?.headers).toEqual({ "xi-api-key": "sk_1" });
   });
 
@@ -34,13 +36,20 @@ describe("ElevenLabsAuth", () => {
     const { fetch, calls } = fakeFetch(200, { signed_url: "wss://signed" });
     const auth = new ElevenLabsAuth({ agentId: "agent_abc", credentials: keyStore("sk_1"), fetch });
 
-    await expect(auth.credentialsFor("text")).resolves.toEqual({ kind: "signed-url", url: "wss://signed" });
+    await expect(auth.credentialsFor("text")).resolves.toEqual({
+      kind: "signed-url",
+      url: "wss://signed",
+    });
     expect(calls[0]?.url).toContain("/v1/convai/conversation/get-signed-url?agent_id=agent_abc");
   });
 
   it("fails clearly without an API key, without calling the network", async () => {
     const { fetch, calls } = fakeFetch(200, {});
-    const auth = new ElevenLabsAuth({ agentId: "agent_abc", credentials: keyStore(undefined), fetch });
+    const auth = new ElevenLabsAuth({
+      agentId: "agent_abc",
+      credentials: keyStore(undefined),
+      fetch,
+    });
     await expect(auth.credentialsFor("voice")).rejects.toMatchObject({ code: "missing-api-key" });
     expect(calls).toHaveLength(0);
   });

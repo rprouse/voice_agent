@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { buildContext, type TranscriptEntry } from "../src/index.ts";
 
 let n = 0;
-const entry = (role: "user" | "agent", text: string, status: TranscriptEntry["status"] = "final"): TranscriptEntry => ({
+const entry = (
+  role: "user" | "agent",
+  text: string,
+  status: TranscriptEntry["status"] = "final",
+): TranscriptEntry => ({
   id: `e${String(++n)}`,
   role,
   text,
@@ -35,7 +39,11 @@ describe("buildContext", () => {
   });
 
   it("skips streaming and failed entries", () => {
-    const entries = [entry("user", "sent"), entry("user", "lost", "failed"), entry("agent", "typing", "streaming")];
+    const entries = [
+      entry("user", "sent"),
+      entry("user", "lost", "failed"),
+      entry("agent", "typing", "streaming"),
+    ];
     const context = buildContext(entries, 10) ?? "";
     expect(context).toContain("User: sent");
     expect(context).not.toContain("lost");

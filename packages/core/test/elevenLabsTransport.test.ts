@@ -113,7 +113,13 @@ describe("ElevenLabsTransport", () => {
       handlers: h,
     });
 
-    callback("onMessage")({ role: "agent", message: "Hi", response_id: "r1", source: "ai", event_id: 1 });
+    callback("onMessage")({
+      role: "agent",
+      message: "Hi",
+      response_id: "r1",
+      source: "ai",
+      event_id: 1,
+    });
     callback("onAgentChatResponsePart")({ type: "delta", text: "H", event_id: 2 });
     callback("onModeChange")({ mode: "speaking" });
     callback("onDisconnect")({ reason: "error", message: "boom", context: { type: "error" } });

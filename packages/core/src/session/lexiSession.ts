@@ -272,7 +272,12 @@ export class LexiSession extends TypedEmitter<SessionEvents> {
     this.#append({ role: "user", text, mode, status: "final" });
   }
 
-  #onAgentPart(type: "start" | "delta" | "stop", text: string, mode: Mode, responseId?: string): void {
+  #onAgentPart(
+    type: "start" | "delta" | "stop",
+    text: string,
+    mode: Mode,
+    responseId?: string,
+  ): void {
     let id = this.#entryForResponse(responseId);
     if (!id && !responseId && type !== "start") {
       // Parts without a response id continue the reply that is currently streaming.

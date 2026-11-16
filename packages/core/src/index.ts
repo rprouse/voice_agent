@@ -2,7 +2,12 @@
 export { TypedEmitter } from "./events.ts";
 export { AppError, type AppErrorCode } from "./errors.ts";
 
-export { appConfigSchema, parseConfig, type AppConfig, type AppConfigInput } from "./config/schema.ts";
+export {
+  appConfigSchema,
+  parseConfig,
+  type AppConfig,
+  type AppConfigInput,
+} from "./config/schema.ts";
 
 export {
   ElevenLabsAuth,

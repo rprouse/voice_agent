@@ -17,10 +17,26 @@ export class ElevenLabsTransport implements AgentTransport {
     const { mode, credential, greet, handlers } = options;
 
     const callbacks = {
-      onMessage: ({ role, message, response_id }: { role: "user" | "agent"; message: string; response_id?: string }) => {
-        handlers.onMessage({ role, text: message, ...(response_id ? { responseId: response_id } : {}) });
+      onMessage: ({
+        role,
+        message,
+        response_id,
+      }: {
+        role: "user" | "agent";
+        message: string;
+        response_id?: string;
+      }) => {
+        handlers.onMessage({
+          role,
+          text: message,
+          ...(response_id ? { responseId: response_id } : {}),
+        });
       },
-      onAgentChatResponsePart: (part: { type: "start" | "delta" | "stop"; text: string; response_id?: string }) => {
+      onAgentChatResponsePart: (part: {
+        type: "start" | "delta" | "stop";
+        text: string;
+        response_id?: string;
+      }) => {
         handlers.onAgentPart({
           type: part.type,
           text: part.text,

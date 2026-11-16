@@ -3,7 +3,10 @@ import { AppError } from "../errors.ts";
 
 export const appConfigSchema = z.object({
   /** ElevenLabs agent ID, e.g. `agent_...`. */
-  agentId: z.string().trim().regex(/^agent_[A-Za-z0-9]+$/, "Agent IDs look like agent_..."),
+  agentId: z
+    .string()
+    .trim()
+    .regex(/^agent_[A-Za-z0-9]+$/, "Agent IDs look like agent_..."),
   /** Output volume for Lexi's voice, 0 to 1. */
   volume: z.number().min(0).max(1).default(0.5),
   /** How many recent transcript entries to pass to a new conversation as context. */
