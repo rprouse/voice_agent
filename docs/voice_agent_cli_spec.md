@@ -159,7 +159,7 @@ Validated with zod in `core`; stored by the app with the Tauri store plugin. The
 
 ## Open questions
 
-- Does the ElevenLabs agent need "text only" allowed as an override in its security settings? Check when text mode first runs.
+- Agent overrides: the "First message" override must be allowed (Security → Overrides); Lexi sends an empty first message when continuing a conversation. Text-only sessions didn't need an override in testing so far. Setup steps are in the README.
 - ElevenLabs ends idle conversations; how long a text session can sit idle decides how often core reconnects and re-primes context.
 - iOS needs a paid Apple developer account, or re-signing every 7 days. Android first.
 - Windows speaker echo not yet tested (Stage 0 used headphones).
