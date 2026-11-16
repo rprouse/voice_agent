@@ -145,6 +145,7 @@ async function start() {
   setStatus("Connecting…");
   const t0 = performance.now();
   try {
+    androidSessionStart();
     const auth = await getAuth(agentId, apiKey, conn);
     log("starting session", { conn, private: !!apiKey });
     conversation = await Conversation.startSession({
@@ -168,6 +169,7 @@ async function start() {
       onMessage: ({ role, message }) => addTranscript(role, message),
       onInterruption: () => log("interrupted"),
     });
+    applyVolume();
     stopBtn.disabled = false;
     muteBtn.disabled = false;
   } catch (err) {
@@ -183,7 +185,55 @@ async function stop() {
   reset();
 }
 
+// --- Android-only native helpers (window.LexiAndroid, added by MainActivity.kt) ---
+interface LexiAndroidBridge {
+  setCommunicationMode(enabled: boolean): string;
+  setVolumeKeysToCall(enabled: boolean): string;
+  startKeepAlive(): string;
+  stopKeepAlive(): string;
+  state(): string;
+}
+const android = (window as unknown as { LexiAndroid?: LexiAndroidBridge }).LexiAndroid;
+const commModeEl = $<HTMLInputElement>("comm-mode");
+const keepAliveEl = $<HTMLInputElement>("keep-alive");
+if (android) {
+  $<HTMLElement>("android-options").hidden = false;
+  log("android", android.state());
+}
+
+function androidSessionStart() {
+  if (!android) return;
+  // Both must happen before the mic opens and while the app is in the foreground.
+  if (commModeEl.checked) log("android", android.setCommunicationMode(true));
+  if (keepAliveEl.checked) log("android", android.startKeepAlive());
+  log("android", android.setVolumeKeysToCall(true));
+  log("android", android.state());
+}
+
+function androidSessionEnd() {
+  if (!android) return;
+  log("android", android.state());
+  log("android", android.setCommunicationMode(false));
+  log("android", android.stopKeepAlive());
+  log("android", android.setVolumeKeysToCall(false));
+}
+
+// In-app output volume, independent of the phone's volume settings.
+const volumeEl = $<HTMLInputElement>("volume");
+const VOLUME_KEY = "spike.volume";
+volumeEl.value = load(VOLUME_KEY) || "0.5";
+function applyVolume() {
+  conversation?.setVolume({ volume: Number(volumeEl.value) });
+}
+volumeEl.addEventListener("input", () => {
+  save(VOLUME_KEY, volumeEl.value);
+  applyVolume();
+});
+
+document.addEventListener("visibilitychange", () => log("visibility", document.visibilityState));
+
 function reset() {
+  androidSessionEnd();
   conversation = null;
   muted = false;
   muteBtn.textContent = "Mute";

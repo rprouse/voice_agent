@@ -22,12 +22,18 @@
             <option value="websocket">WebSocket</option>
           </select>
         </label>
+        <fieldset id="android-options" hidden>
+          <legend>Android</legend>
+          <label class="check"><input id="comm-mode" type="checkbox" checked /> Voice-call audio mode (echo cancellation)</label>
+          <label class="check"><input id="keep-alive" type="checkbox" checked /> Keep running in background</label>
+        </fieldset>
         <div class="row">
           <button id="mic-test">Test mic</button>
           <button id="start" class="primary">Start conversation</button>
           <button id="stop" disabled>Stop</button>
           <button id="mute" disabled>Mute</button>
         </div>
+        <label>Lexi's volume <input id="volume" type="range" min="0" max="1" step="0.05" /></label>
         <meter id="level" min="0" max="1" value="0"></meter>
         <p id="status">Idle</p>
       </section>

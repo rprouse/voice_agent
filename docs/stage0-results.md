@@ -6,7 +6,7 @@ Spike: `spikes/voice` (Tauri 2.12, `@elevenlabs/client` 1.36.1). Agent: Lexi, El
 
 Mic test, WebRTC and WebSocket conversations, and interrupting the agent all worked as expected. The log wasn't saved, so connect time and memory use were not recorded.
 
-## Android (Galaxy S23 Ultra, Android WebView) — Nov 15, 2026: partial pass
+## Android (Galaxy S23 Ultra, Android WebView) — Nov 15, 2026: pass with native additions (WebRTC only)
 
 | Check | Result |
 | --- | --- |
@@ -22,6 +22,18 @@ Mic test, WebRTC and WebSocket conversations, and interrupting the agent all wor
 - **Echo:** the ElevenLabs SDK already asks for `echoCancellation`, `noiseSuppression` and `autoGainControl`, so the WebView's echo cancellation is not removing the speaker output. The likely cause is that Android isn't in voice-communication audio mode (`AudioManager.MODE_IN_COMMUNICATION`), which is what turns on the phone's hardware echo cancellation for calls. Native WebRTC apps, including ElevenLabs' React Native SDK, switch to this mode; a WebView does not.
 - **Background:** Android pauses the app's audio and timers soon after it leaves the foreground. Keeping a conversation alive needs a foreground service (`FOREGROUND_SERVICE_MICROPHONE`) with a persistent notification. React Native would need the same.
 - Both fixes are small native (Kotlin) additions to the Tauri Android project, not a reason to change frameworks yet.
+
+### Round 2 (Kotlin bridge: voice-call audio mode + foreground service)
+
+| Check | Result |
+| --- | --- |
+| WebRTC, phone speaker, voice-call mode on | Pass, no self-interruption |
+| WebRTC, phone speaker, voice-call mode off | Pass (so call mode wasn't the deciding factor; the foreground service was on in both runs) |
+| WebRTC, switching apps / screen lock, foreground service on | Pass |
+| WebSocket, phone speaker | **Fail**, interrupts itself immediately and the conversation ends. Echo cancellation evidently covers only WebRTC's audio path |
+| Volume | Too loud regardless of phone volume settings. WebRTC plays on the voice-call stream, which Samsung's settings screen doesn't expose. **Fixed in round 3:** the volume keys control the call stream during a session, and an in-app slider (SDK `setVolume`) works. Both confirmed on the phone |
+
+**Decision so far:** use WebRTC only on Android. Tauri is viable on mobile with a small native layer (foreground service, audio/volume handling).
 
 ### Not recorded
 
