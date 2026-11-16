@@ -1,0 +1,5 @@
+spikes/
+**/src-tauri/
+**/dist/
+pnpm-lock.yaml
+docs/
