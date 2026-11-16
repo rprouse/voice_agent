@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <title>Lexi voice spike</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+  <body>
+    <main>
+      <h1>Lexi voice spike</h1>
+
+      <section class="card">
+        <label>Agent ID <input id="agent-id" placeholder="agent_..." autocomplete="off" /></label>
+        <label>ElevenLabs API key <small>(only for agents with authentication on)</small>
+          <input id="api-key" type="password" placeholder="optional" autocomplete="off" />
+        </label>
+        <label>Connection
+          <select id="conn-type">
+            <option value="webrtc">WebRTC</option>
+            <option value="websocket">WebSocket</option>
+          </select>
+        </label>
+        <fieldset id="android-options" hidden>
+          <legend>Android</legend>
+          <label class="check"><input id="comm-mode" type="checkbox" checked /> Voice-call audio mode (echo cancellation)</label>
+          <label class="check"><input id="keep-alive" type="checkbox" checked /> Keep running in background</label>
+        </fieldset>
+        <div class="row">
+          <button id="mic-test">Test mic</button>
+          <button id="start" class="primary">Start conversation</button>
+          <button id="stop" disabled>Stop</button>
+          <button id="mute" disabled>Mute</button>
+        </div>
+        <label>Lexi's volume <input id="volume" type="range" min="0" max="1" step="0.05" /></label>
+        <meter id="level" min="0" max="1" value="0"></meter>
+        <p id="status">Idle</p>
+      </section>
+
+      <section class="card">
+        <h2>Transcript</h2>
+        <div id="transcript"></div>
+      </section>
+
+      <section class="card">
+        <h2>Log <button id="copy-log" class="small">Copy</button></h2>
+        <pre id="log"></pre>
+      </section>
+    </main>
+  </body>
+</html>

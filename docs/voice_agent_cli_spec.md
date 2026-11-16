@@ -1,212 +1,165 @@
-# Voice Agent CLI — Scaffolding Spec
+# Lexi — Personal Voice Agent Spec
 
-Nov 14, 2026 · @Rob Prouse
+Revised Nov 15, 2026 · @Rob Prouse (supersedes the Nov 14 CLI-first scaffolding spec)
 
 ## Overview
 
-Build a Windows command-line AI assistant in TypeScript, starting with plain text chat through OpenRouter and growing into an ElevenLabs voice agent with MCP tools. The scaffold must put all logic in a reusable core package so a desktop UI (likely Electron) can be added later without touching it.
+Lexi is a personal AI agent you can type or talk to, on Windows desktop and Android (iOS later). Both text and voice go through one ElevenLabs agent, also named Lexi, whose LLM is chosen in the ElevenLabs dashboard (currently an ElevenLabs-hosted model). MCP tools come later. Built in TypeScript as a Tauri 2 app, with the logic in a platform-neutral `core` package.
 
-Delivery is staged. Only Stage 1 is built now; the rest shapes the interfaces.
+The app is for one user (the author). The ElevenLabs agent has authentication on; the app holds an ElevenLabs API key in the OS keychain and exchanges it for short-lived conversation credentials. No backend or token server.
 
-| Stage | Delivers | Build now? |
-| --- | --- | --- |
-| 1. Text chat | Streaming chat with an OpenRouter model in the terminal | Yes |
-| 2. Voice | ElevenLabs Agents conversation with mic input and speaker output, LLM via OpenRouter as a custom LLM | No, design for it |
-| 3. Local MCP tools | App acts as MCP client for local servers; tools exposed to the model (text) and to ElevenLabs as client tools (voice) | No, design for it |
-| 4. Remote MCP + OAuth | Remote MCP servers via the app's MCP client, with the MCP spec OAuth flow and token storage | No, design for it |
+Stage 0 proved voice works in a Tauri webview on Windows and Android: see [stage0-results.md](stage0-results.md).
 
-## Tech stack
+## Decisions and why
 
-TypeScript on Node is the choice because ElevenLabs and MCP both ship official TypeScript SDKs, and the same core can later run inside Electron.
+| Decision | Reason |
+| --- | --- |
+| Tauri 2 instead of Electron + Expo | One web UI for desktop and mobile; uses the system WebView2 instead of bundling Chromium; no separate React Native app. Proven in Stage 0 |
+| ElevenLabs agent for both text and voice (OpenRouter dropped for now) | One backend, one agent configuration (prompt, LLM, tools) for both modes. The SDK supports text-only sessions with streamed replies. Model choice and pricing are tied to ElevenLabs; OpenRouter can come back as the agent's custom LLM without app changes |
+| WebRTC for voice, WebSocket only for text | WebSocket voice echoed on the Android speaker in Stage 0; WebRTC passed |
+| Transcript lives in `core` | Each ElevenLabs conversation is separate (text session, voice session, reconnect after a timeout). Core keeps one transcript and primes each new conversation with recent context (`sendContextualUpdate`), so switching modes doesn't lose the thread |
+| Platform-neutral `core` (no Node, no Tauri) | Runs in the webview on desktop and mobile and is testable in Vitest. Platform services (secrets, HTTP without CORS, Android audio) are injected |
+| Native Android layer | Foreground service, voice-call audio mode and volume-key routing, from the Stage 0 spike. Packaged as a Tauri plugin in Stage 2 |
+| Secrets via the Rust `keyring` crate | Windows Credential Manager on desktop through two small Tauri commands; Android Keystore in Stage 2. No third-party Tauri plugin |
+| Typed tiny event emitter, not Node `EventEmitter` | Not available in the webview; `on()` returns an unsubscribe function |
+| TypeScript 6.0.x, not 7.x | typescript-eslint supports TypeScript `<6.1` |
+| React + Vite for the UI, without `@elevenlabs/react` | The UI talks to `core`, never to the SDK directly |
 
-| Concern | Choice | Notes |
-| --- | --- | --- |
-| Runtime | Node.js LTS (22+) | Windows 11 is the only target |
-| Language | TypeScript, strict mode, ESM | No `any` in the core's public API |
-| Monorepo | pnpm workspaces | npm workspaces acceptable if pnpm is unwanted |
-| LLM access | OpenRouter's OpenAI-compatible API via the `openai` npm package with `baseURL` set to OpenRouter | Streaming required |
-| CLI framework | `commander` for commands, `@inquirer/prompts` or a readline loop for the chat REPL | Keep the CLI thin |
-| Terminal output | `chalk` plus a simple streaming renderer | Markdown rendering optional |
-| Validation | `zod` for config and tool schemas | Also used for MCP tool schemas later |
-| Voice (Stage 2) | ElevenLabs official JS SDK | Verify current package name and Node support before Stage 2 |
-| MCP (Stages 3-4) | `@modelcontextprotocol/sdk` | Includes client OAuth support |
-| Tests | Vitest |  |
-| Lint/format | ESLint + Prettier |  |
+## Stages
 
-Package names and versions should be checked against npm at scaffold time; this spec was written without verifying them.
+| Stage | Delivers |
+| --- | --- |
+| 0. Voice spike | Done. Tauri + `@elevenlabs/client` on Windows and Android |
+| 1. Core + desktop app | `packages/core` (session, transcript, auth, typed events, tests) and `apps/lexi` (Tauri + React): type or talk to Lexi, switch modes without losing context, settings for agent ID and API key (Credential Manager), volume |
+| 2. Android | The same app on Android: native layer from the spike as a Tauri plugin, Keystore secrets, mobile layout |
+| 3. Local MCP tools | Desktop: stdio MCP servers started via the Tauri shell plugin; their tools registered with the agent as ElevenLabs client tools, so they work in both text and voice. Mobile: remote servers only |
+| 4. Remote MCP + OAuth | MCP SDK OAuth client; browser sign-in returns by deep link or localhost callback; tokens in the OS keychain. Compare with ElevenLabs' built-in server-side MCP support first |
 
 ## Repository layout
 
-Two workspace packages: `core` holds everything reusable, `cli` only handles terminal input and output. The CLI imports the core through its public `index.ts` and nothing else.
-
 ```
-voice-agent/
-  package.json            # workspace root, scripts: build, dev, test, lint
+voice_agent/
+  package.json            # workspace root: build, dev, test, lint, typecheck
   pnpm-workspace.yaml
   tsconfig.base.json
-  .env.example            # OPENROUTER_API_KEY, ELEVENLABS_API_KEY (later)
-  CLAUDE.md               # conventions for Claude Code (see last section)
+  eslint.config.js
+  CLAUDE.md
   packages/
-    core/
+    core/                 # platform-neutral TypeScript, consumed as source
       src/
         index.ts          # public API only
-        session/          # ChatSession, conversation history
-        llm/              # LlmProvider interface + OpenRouter implementation
-        tools/            # ToolRegistry interface (empty in Stage 1)
-        voice/            # placeholder: VoiceSession interface only
-        config/           # config loading + zod schema
-        events.ts         # typed event emitter definitions
+        session/          # LexiSession, transcript, context priming
+        agent/            # AgentTransport interface + ElevenLabs adapter
+        auth/             # credential exchange (API key -> token / signed URL)
+        config/           # zod schema
+        errors.ts         # AppError with codes
+        events.ts         # typed emitter
       test/
-    cli/
+  apps/
+    lexi/                 # Tauri 2 + React + Vite; desktop now, Android in Stage 2
       src/
-        index.ts          # commander entry, bin: va
-        commands/chat.ts  # REPL loop
-        render.ts         # streaming output to the terminal
-      test/
+      src-tauri/
+  spikes/
+    voice/                # Stage 0, kept for reference
 ```
 
-A future `packages/desktop` (Electron) sits beside `cli` and depends only on `core`.
-
-## Core architecture
-
-The core exposes sessions that emit typed events; front ends subscribe to events and never call providers directly. That one rule is what keeps the CLI and a future desktop app interchangeable.
-
-Key interfaces (names are suggestions; keep the shapes):
+## Core interfaces (shapes, names may change)
 
 ```ts
-interface LlmProvider {
-  streamChat(req: {
-    model: string;
-    messages: ChatMessage[];
-    tools?: ToolDefinition[];          // unused in Stage 1, present for Stage 3
-    signal?: AbortSignal;
-  }): AsyncIterable<LlmChunk>;         // text deltas, tool-call deltas, finish
+type Mode = 'text' | 'voice';
+
+interface CredentialProvider {
+  get(name: 'elevenlabs'): Promise<string | undefined>;
 }
 
-interface ToolRegistry {
-  list(): Promise<ToolDefinition[]>;
-  call(name: string, args: unknown, signal?: AbortSignal): Promise<ToolResult>;
+// Exchanges the API key for a conversation credential (token for WebRTC voice,
+// signed URL for WebSocket text). Uses an injected fetch (Tauri HTTP plugin).
+interface AgentAuth {
+  credentialsFor(mode: Mode, signal?: AbortSignal): Promise<AgentCredential>;
 }
 
-class ChatSession {
-  constructor(opts: { llm: LlmProvider; tools?: ToolRegistry; config: AppConfig });
-  send(text: string): Promise<void>;   // emits events while streaming
-  cancel(): void;                      // aborts the current response
-  reset(): void;
-  on<E extends keyof SessionEvents>(e: E, fn: SessionEvents[E]): void;
+// Thin seam over @elevenlabs/client so the session is testable with a fake.
+interface AgentTransport {
+  connect(opts: { mode: Mode; credential: AgentCredential; handlers: TransportHandlers }): Promise<AgentConnection>;
+}
+
+interface AgentConnection {
+  sendText(text: string): void;
+  sendContext(text: string): void;
+  setMuted(muted: boolean): void;
+  setVolume(volume: number): void;
+  end(): Promise<void>;
+}
+
+class LexiSession {
+  constructor(opts: { auth: AgentAuth; transport: AgentTransport; config: AppConfig });
+  readonly transcript: readonly TranscriptEntry[];
+  send(text: string): Promise<void>;     // starts a text conversation if none is open
+  startVoice(): Promise<void>;
+  stopVoice(): Promise<void>;
+  setMuted(muted: boolean): void;
+  setVolume(volume: number): void;
+  reset(): Promise<void>;                // ends any conversation, clears the transcript
+  on<E extends keyof SessionEvents>(e: E, fn: SessionEvents[E]): () => void;
 }
 
 type SessionEvents = {
-  'assistant:delta': (text: string) => void;
-  'assistant:done': (msg: ChatMessage) => void;
-  'tool:call': (call: ToolCall) => void;      // Stage 3
-  'tool:result': (res: ToolResult) => void;   // Stage 3
+  'state': (s: { connection: 'idle' | 'connecting' | 'connected'; mode: Mode | null }) => void;
+  'transcript': (entries: readonly TranscriptEntry[]) => void;   // includes streaming partials
+  'voice:activity': (a: 'listening' | 'speaking') => void;
   'error': (err: AppError) => void;
 };
-
-interface VoiceSession {                // Stage 2, interface only for now
-  start(): Promise<void>;
-  stop(): Promise<void>;
-  on(...): void;                       // transcript, agent speech, tool calls, state
-}
 ```
 
 Rules:
 
-- No `console.log`, `process.stdout` or `process.exit` in `core`.
-- All network calls accept an `AbortSignal` so Ctrl+C cancels a response, not the app.
-- Errors are typed (`AppError` with a `code`) so each front end can word them its own way.
-- Conversation history lives in `ChatSession`; the provider is stateless.
+- `core` has no Node APIs, Tauri imports, `process`, `console` or filesystem access. Enforced by `"types": []` in its tsconfig and ESLint rules.
+- Network calls take an `AbortSignal`.
+- Errors are typed (`AppError` with a `code`, e.g. `missing-api-key`, `auth-failed`, `mic-denied`, `network`, `disconnected`) so the UI words them its own way.
+- The transcript lives in `LexiSession`; ElevenLabs conversations are disposable.
 
-## Stage 1 scope
+## Configuration
 
-Stage 1 is a streaming text chat in the terminal, launched with `va chat`, talking to one OpenRouter model at a time.
-
-In scope:
-
-- `va chat [--model <id>] [--system <file>]` opens a REPL; responses stream token by token.
-- Slash commands inside the REPL: `/model <id>`, `/reset`, `/system <file>`, `/help`, `/exit`.
-- Ctrl+C during a response cancels it; Ctrl+C at an empty prompt exits.
-- `va models [--filter <text>]` lists OpenRouter models (from its models endpoint) with context length and price.
-- Conversation history kept in memory for the session; optional `--save <file>` writes the transcript as JSON on exit.
-- OpenRouter attribution headers (`HTTP-Referer`, `X-Title`) set from config.
-- Clear messages for a missing API key, invalid model, rate limit and network failure.
-
-Out of scope for Stage 1:
-
-- Audio of any kind, ElevenLabs, MCP, OAuth.
-- Persistent conversation storage or multiple saved sessions.
-- Packaging as a standalone `.exe` (run via `pnpm dev` or `node` for now).
-
-## Later stages
-
-These are not built now, but Stage 1 must not make them hard. Each needs its own spec before work starts.
-
-**Stage 2: voice.** A `VoiceSession` in the core wraps an ElevenLabs Agents conversation. The agent is configured in ElevenLabs to use OpenRouter as a custom LLM (OpenAI-compatible endpoint, OpenRouter key stored as an ElevenLabs secret). The CLI gets `va talk`. Audio capture and playback on Windows is the main risk: prototype mic in and speaker out in a throwaway script first, and test with headphones to avoid echo.
-
-**Stage 3: local MCP tools.** An `McpToolRegistry` implements `ToolRegistry` using the MCP client SDK over stdio, with servers listed in config. In text mode, tools are passed to OpenRouter as function definitions and `ChatSession` runs the tool loop. In voice mode, the same tools are registered with ElevenLabs as client tools and executed locally. One registry, two consumers.
-
-**Stage 4: remote MCP and OAuth.** The same registry adds streamable HTTP transports for remote servers. Authentication uses the MCP SDK's OAuth client support: open the system browser for sign-in, receive the callback on a localhost port, store tokens in Windows Credential Manager (e.g. via `keytar` or an equivalent maintained package), refresh automatically. Tokens never go to ElevenLabs.
-
-Assumptions to verify before each stage: ElevenLabs' current custom-LLM and client-tool behaviour, and whether its built-in MCP support has gained OAuth (which could simplify Stage 4).
-
-## Configuration and secrets
-
-Settings live in one JSON file, secrets in environment variables; the core validates both with zod at startup and fails with a clear message.
-
-- Config file: `%APPDATA%\voice-agent\config.json`, overridable with `--config <path>`. Created with defaults on first run.
-- Secrets: `OPENROUTER_API_KEY` (Stage 1), `ELEVENLABS_API_KEY` (Stage 2), read from the environment or a `.env` file in the working directory. Never written to the config file or logs.
-- Resolution order: CLI flag, then environment, then config file, then built-in default.
-
-Initial config shape:
+Validated with zod in `core`; stored by the app with the Tauri store plugin. The API key is kept apart in the OS keychain and never logged.
 
 ```json
 {
-  "defaultModel": "anthropic/claude-sonnet-4.5",
-  "systemPrompt": "You are a concise, helpful assistant.",
-  "openRouter": { "appName": "voice-agent", "appUrl": "https://localhost" },
-  "mcpServers": {}
+  "agentId": "agent_...",
+  "volume": 0.5,
+  "contextTurns": 20
 }
 ```
 
-`mcpServers` stays empty in Stage 1 but is in the schema so Stage 3 adds entries, not structure. The default model id is a placeholder; pick a current one from `va models`.
+## Tooling (versions checked Nov 15, 2026)
 
-## Testing and acceptance
+| Package | Version |
+| --- | --- |
+| Node | 26.x installed; engines `>=24` |
+| pnpm | 12.x |
+| typescript | 6.0.3 |
+| zod | 4.6.7 |
+| vitest | 5.1.0 |
+| eslint / @eslint/js | 10.15.0 / 10.0.1 |
+| typescript-eslint | 8.72.2 |
+| eslint-plugin-react-hooks | 7.1.1 |
+| prettier / eslint-config-prettier | 3.10.1 / 10.1.8 |
+| globals | 17.14.0 |
+| react / react-dom | 19.3.x |
+| vite / @vitejs/plugin-react | 8.3.8 / 6.3.0 |
+| @tauri-apps/cli / @tauri-apps/api | 2.12.4 |
+| @tauri-apps/plugin-http / plugin-store | 2.9.0 / 2.5.1 |
+| keyring (Rust crate) | 4.2.0 |
+| @elevenlabs/client | 1.36.1 |
+| @modelcontextprotocol/sdk | 1.32.2 (Stage 3) |
 
-The core is tested without the network by injecting a fake `LlmProvider`; one opt-in test hits OpenRouter for real.
+## Testing
 
-- Unit tests (Vitest) for `ChatSession`: history handling, streaming events, cancel, reset, error mapping.
-- Config tests: defaults, precedence, invalid file, missing key.
-- An integration test gated on `OPENROUTER_API_KEY` and `RUN_LIVE=1` that sends one short prompt.
-- No CLI end-to-end tests in Stage 1 beyond a smoke test that `va --help` runs.
+- `core` is tested with Vitest using a fake `AgentTransport` and fake `fetch`: transcript handling, streaming partials, context priming, mode switching, reconnect after disconnect, error mapping.
+- The app gets a build check and a manual test checklist per stage; voice can't be tested automatically.
 
-Stage 1 is done when:
+## Open questions
 
-- [ ] `pnpm install && pnpm build && pnpm test` passes on a clean Windows 11 machine.
-- [ ] `va chat` streams a reply from the default model in Windows Terminal and PowerShell.
-- [ ] `/model` switches models mid-conversation and history carries over.
-- [ ] Ctrl+C cancels a long response and the prompt returns.
-- [ ] A missing or wrong API key produces a one-line, actionable error, not a stack trace.
-- [ ] `packages/core` has no imports from `packages/cli` and no terminal I/O (checked by an ESLint rule).
-- [ ] `va models --filter claude` lists matching models.
-
-## Instructions for Claude Code
-
-Hand this spec to Claude Code with the prompt below; it should plan first, then build Stage 1 only.
-
-```markdown
-Read SPEC.md. Build Stage 1 only.
-1. Propose a plan and the exact package list with current versions; wait for approval.
-2. Scaffold the monorepo, tooling, and CLAUDE.md first; make build/test/lint pass on an empty core.
-3. Implement config, then LlmProvider (OpenRouter), then ChatSession with tests, then the CLI.
-4. Stop after each step, run the tests, and summarise what changed.
-Do not implement voice, MCP or OAuth. Do not add dependencies outside the plan without asking.
-```
-
-`CLAUDE.md` should record: the core/CLI boundary rule, no terminal I/O in core, strict TypeScript, tests required for core changes, Windows paths and PowerShell as the shell, and pnpm as the package manager.
-
-Open questions:
-
-- Working name for the app and the CLI command (`va` is a placeholder).
-- Default OpenRouter model.
-- Whether the desktop app will definitely be Electron, or whether Tauri is worth a look (it would change little in the core).
+- Agent overrides: the "First message" override must be allowed (Security → Overrides); Lexi sends an empty first message when continuing a conversation. Text-only sessions didn't need an override in testing so far. Setup steps are in the README.
+- ElevenLabs ends idle conversations; how long a text session can sit idle decides how often core reconnects and re-primes context.
+- iOS needs a paid Apple developer account, or re-signing every 7 days. Android first.
+- Windows speaker echo not yet tested (Stage 0 used headphones).
