@@ -37,18 +37,16 @@ let storePromise: Promise<Store> | null = null;
 const settingsStore = () =>
   (storePromise ??= load("settings.json", { autoSave: false, defaults: {} }));
 
-export async function loadSettings(): Promise<Partial<AppConfigInput>> {
+const settingKeys = ["agents", "activeAgentId", "volume", "contextTurns"] as const;
+
+/** Raw stored settings, for parseConfig. Includes `agentId` from before multiple agents. */
+export async function loadSettings(): Promise<Record<string, unknown>> {
   const store = await settingsStore();
-  const [agentId, volume, contextTurns] = await Promise.all([
-    store.get<string>("agentId"),
-    store.get<number>("volume"),
-    store.get<number>("contextTurns"),
-  ]);
-  return {
-    ...(agentId !== undefined ? { agentId } : {}),
-    ...(volume !== undefined ? { volume } : {}),
-    ...(contextTurns !== undefined ? { contextTurns } : {}),
-  };
+  const keys = [...settingKeys, "agentId"];
+  const values = await Promise.all(keys.map((key) => store.get<unknown>(key)));
+  return Object.fromEntries(
+    keys.flatMap((key, i) => (values[i] !== undefined ? [[key, values[i]]] : [])),
+  );
 }
 
 export async function saveSettings(settings: Partial<AppConfigInput>): Promise<void> {
@@ -57,5 +55,7 @@ export async function saveSettings(settings: Partial<AppConfigInput>): Promise<v
   for (const [key, value] of Object.entries(settings) as [string, unknown][]) {
     if (value !== undefined) await store.set(key, value);
   }
+  // The agent list replaces the single agent ID older versions stored.
+  if (settings.agents !== undefined) await store.delete("agentId");
   await store.save();
 }
