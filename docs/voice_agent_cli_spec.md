@@ -124,11 +124,14 @@ Validated with zod in `core`; stored by the app with the Tauri store plugin. The
 
 ```json
 {
-  "agentId": "agent_...",
+  "agents": [{ "id": "agent_...", "name": "Lexi" }],
+  "activeAgentId": "agent_...",
   "volume": 0.5,
   "contextTurns": 20
 }
 ```
+
+`name` is optional (empty shows the ID); Settings fills it from `GET /v1/convai/agents/{agent_id}`. `activeAgentId` is the agent picked in chat and falls back to the first. Older settings with a single `agentId` are read as a one-agent list.
 
 ## Tooling (versions checked Nov 15, 2026)
 

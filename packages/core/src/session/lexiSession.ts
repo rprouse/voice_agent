@@ -72,7 +72,7 @@ export class LexiSession extends TypedEmitter<SessionEvents> {
   constructor(options: {
     auth: AgentAuth;
     transport: AgentTransport;
-    config: AppConfig;
+    config: Pick<AppConfig, "contextTurns" | "volume">;
     now?: () => number;
   }) {
     super();

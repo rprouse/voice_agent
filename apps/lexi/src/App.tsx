@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { Chat } from "./Chat.tsx";
 import { useAgentAudioGuard } from "./audioGuard.ts";
-import { useLexiSession, useNativeVoice, useSessionState, useSettings } from "./hooks.ts";
+import { useAgentSession, useNativeVoice, useSessionState, useSettings } from "./hooks.ts";
 import { saveSettings } from "./platform.ts";
 import { Settings } from "./Settings.tsx";
 
 export function App() {
-  const { settings, reload } = useSettings();
-  const session = useLexiSession(settings?.session ?? null);
+  const { settings, reload, selectAgent } = useSettings();
+  const session = useAgentSession(
+    settings?.agents ?? null,
+    settings?.activeAgentId ?? null,
+    settings?.contextTurns ?? 20,
+  );
   // Here rather than in Chat, so voice keeps its native support while Settings is open.
   const sessionState = useSessionState(session);
   useNativeVoice(sessionState);
@@ -19,7 +23,8 @@ export function App() {
     return <div className="app loading">Loading…</div>;
   }
 
-  if (!session || !settings.keySaved || showSettings) {
+  const agent = settings.agents?.find((a) => a.id === settings.activeAgentId);
+  if (!session || !settings.agents || !agent || !settings.keySaved || showSettings) {
     const required = !session || !settings.keySaved;
     return (
       <Settings
@@ -43,8 +48,11 @@ export function App() {
   const currentVolume = volume ?? settings.volume;
   return (
     <Chat
-      key={settings.session?.agentId}
+      key={agent.id}
       session={session}
+      agents={settings.agents}
+      agent={agent}
+      onSelectAgent={selectAgent}
       volume={currentVolume}
       onVolumeChange={(value) => {
         setVolume(value);

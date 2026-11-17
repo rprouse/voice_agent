@@ -17,7 +17,9 @@ Lexi needs an ElevenLabs agent and an API key. Set the agent up once in the [Ele
 5. **Save** the agent and copy its **agent ID** (`agent_...`).
 6. **Create an API key** under Developers → API keys. If you restrict its permissions, it needs access to ElevenLabs Agents.
 
-Keep the agent ID and API key out of the repository (it's public). Lexi stores the key in Windows Credential Manager and the agent ID in its app data folder.
+Keep agent IDs and the API key out of the repository (it's public). Lexi stores the key in Windows Credential Manager and the agent IDs in its app data folder.
+
+You can set up more than one agent this way and switch between them in Lexi. Repeat steps 1 to 5 for each; one API key covers them all.
 
 ## Running Lexi
 
@@ -32,7 +34,7 @@ pnpm install
 pnpm dev
 ```
 
-On first run Lexi opens **Settings**: enter the agent ID and API key, then Save. Type a message, or press **Talk** to speak. Voice uses WebRTC; use headphones if Lexi hears herself through your speakers.
+On first run Lexi opens **Settings**: enter the API key and one or more agent IDs, then Save. Lexi fills in each agent's name from ElevenLabs unless you type one. With more than one agent, pick who to talk to from the menu at the top of the chat; each agent keeps its own conversation while Lexi is open. Type a message, or press **Talk** to speak. Voice uses WebRTC; use headphones if Lexi hears herself through your speakers.
 
 ## Development
 

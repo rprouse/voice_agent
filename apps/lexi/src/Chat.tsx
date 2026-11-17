@@ -1,16 +1,28 @@
-import type { LexiSession, TranscriptEntry } from "@lexi/core";
+import { agentLabel, type AgentEntry, type LexiSession, type TranscriptEntry } from "@lexi/core";
 import { useEffect, useRef, useState, type SyntheticEvent, type KeyboardEvent } from "react";
 import { errorText } from "./errorText.ts";
 import { useSessionError, useSessionState, useTranscript, useVoiceActivity } from "./hooks.ts";
 
 interface ChatProps {
   session: LexiSession;
+  agents: readonly AgentEntry[];
+  /** The agent this session talks to. */
+  agent: AgentEntry;
+  onSelectAgent: (agentId: string) => void;
   volume: number;
   onVolumeChange: (volume: number) => void;
   onOpenSettings: () => void;
 }
 
-export function Chat({ session, volume, onVolumeChange, onOpenSettings }: ChatProps) {
+export function Chat({
+  session,
+  agents,
+  agent,
+  onSelectAgent,
+  volume,
+  onVolumeChange,
+  onOpenSettings,
+}: ChatProps) {
   const transcript = useTranscript(session);
   const state = useSessionState(session);
   const activity = useVoiceActivity(session);
@@ -20,6 +32,8 @@ export function Chat({ session, volume, onVolumeChange, onOpenSettings }: ChatPr
     session.setVolume(volume);
   }, [session, volume]);
 
+  // How the agent is referred to in prose; the picker falls back to the ID instead.
+  const name = agent.name || "Lexi";
   const voiceOn = state.mode === "voice" && state.connection !== "idle";
   const voiceConnecting = voiceOn && state.connection === "connecting";
   const status =
@@ -27,7 +41,7 @@ export function Chat({ session, volume, onVolumeChange, onOpenSettings }: ChatPr
       ? "Connecting…"
       : voiceOn
         ? activity === "speaking"
-          ? "Lexi is speaking"
+          ? `${name} is speaking`
           : "Listening"
         : state.connection === "connected"
           ? "Connected"
@@ -36,7 +50,26 @@ export function Chat({ session, volume, onVolumeChange, onOpenSettings }: ChatPr
   return (
     <div className="app">
       <header className="header">
-        <h1>Lexi</h1>
+        {agents.length > 1 ? (
+          <div className="agent-picker">
+            <select
+              value={agent.id}
+              onChange={(e) => {
+                onSelectAgent(e.target.value);
+              }}
+              aria-label="Agent"
+              title="Choose who to talk to"
+            >
+              {agents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {agentLabel(a)}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <h1>{agentLabel(agent)}</h1>
+        )}
         <span className={`status status-${state.connection}`}>{status}</span>
         <button
           className="icon-button"
@@ -68,6 +101,7 @@ export function Chat({ session, volume, onVolumeChange, onOpenSettings }: ChatPr
             connecting={voiceConnecting}
             speaking={activity === "speaking"}
             muted={state.muted}
+            name={name}
           />
         )}
         <div className="voice-bar">
@@ -110,7 +144,7 @@ export function Chat({ session, volume, onVolumeChange, onOpenSettings }: ChatPr
             dismiss();
             void session.send(text);
           }}
-          placeholder={voiceOn ? "Type to Lexi while talking…" : "Message Lexi…"}
+          placeholder={voiceOn ? `Type to ${name} while talking…` : `Message ${name}…`}
         />
       </footer>
     </div>
@@ -122,17 +156,19 @@ function VoiceStatus({
   connecting,
   speaking,
   muted,
+  name,
 }: {
   connecting: boolean;
   speaking: boolean;
   muted: boolean;
+  name: string;
 }) {
   const [kind, text] = connecting
     ? (["connecting", "Connecting… wait before you speak"] as const)
     : muted
-      ? (["muted", "Muted: Lexi can't hear you"] as const)
+      ? (["muted", `Muted: ${name} can't hear you`] as const)
       : speaking
-        ? (["speaking", "Lexi is speaking"] as const)
+        ? (["speaking", `${name} is speaking`] as const)
         : (["listening", "Listening, go ahead"] as const);
   return (
     <div className={`voice-status voice-status-${kind}`} role="status" aria-live="polite">

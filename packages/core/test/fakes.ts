@@ -9,7 +9,11 @@ import type {
   TransportHandlers,
 } from "../src/index.ts";
 
-export const config: AppConfig = { agentId: "agent_test", volume: 0.5, contextTurns: 20 };
+export const config: AppConfig = {
+  agents: [{ id: "agent_test", name: "" }],
+  volume: 0.5,
+  contextTurns: 20,
+};
 
 export class FakeConnection implements AgentConnection {
   readonly texts: string[] = [];

@@ -3,18 +3,23 @@ export { TypedEmitter } from "./events.ts";
 export { AppError, type AppErrorCode } from "./errors.ts";
 
 export {
+  activeAgent,
+  agentLabel,
   appConfigSchema,
+  parseAgentId,
   parseConfig,
+  type AgentEntry,
   type AppConfig,
   type AppConfigInput,
 } from "./config/schema.ts";
 
-export {
-  ElevenLabsAuth,
-  type AgentAuth,
-  type CredentialProvider,
-  type FetchLike,
-} from "./auth/agentAuth.ts";
+export { ElevenLabsAuth, type AgentAuth } from "./auth/agentAuth.ts";
+export type {
+  CredentialProvider,
+  ElevenLabsClientOptions,
+  FetchLike,
+} from "./auth/elevenLabsHttp.ts";
+export { ElevenLabsAgents, type AgentInfo } from "./agent/agentDirectory.ts";
 
 export type {
   AgentActivity,
