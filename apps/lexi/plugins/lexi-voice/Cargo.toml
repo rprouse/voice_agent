@@ -1,0 +1,17 @@
+[package]
+name = "tauri-plugin-lexi-voice"
+version = "0.1.0"
+description = "Lexi: native audio routing and background keep-alive for voice conversations"
+authors = ["Rob Prouse"]
+edition = "2024"
+rust-version = "1.88"
+publish = false
+# Lets the app's Android build find this plugin's Android library.
+links = "tauri-plugin-lexi-voice"
+
+[dependencies]
+tauri = "2.12.5"
+serde = "1.0.229"
+
+[build-dependencies]
+tauri-plugin = { version = "2.7.2", features = ["build"] }

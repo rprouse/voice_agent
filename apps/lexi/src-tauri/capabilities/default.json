@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "store:default",
+    "lexi-voice:default",
     {
       "identifier": "http:default",
       "allow": [{ "url": "https://api.elevenlabs.io/*" }]

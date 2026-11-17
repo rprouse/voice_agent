@@ -1,5 +1,8 @@
 //! Secrets (the ElevenLabs API key) in the OS credential store via keyring-core.
-//! Windows: Credential Manager. Android (Stage 2) will register its own store.
+//! Windows: Credential Manager. Android: SharedPreferences encrypted with an Android
+//! Keystore key (android-native-keyring-store).
+
+use std::sync::OnceLock;
 
 use keyring_core::{Entry, Error};
 
@@ -7,19 +10,33 @@ const SERVICE: &str = "dev.lexi.app";
 /// Only these names can be read or written from the webview.
 const ALLOWED: &[&str] = &["elevenlabs"];
 
-/// Registers the platform credential store. Call once before any command runs.
-pub fn init() {
-    #[cfg(target_os = "windows")]
-    match windows_native_keyring_store::Store::new() {
-        Ok(store) => keyring_core::set_default_store(store),
-        Err(err) => eprintln!("Credential store unavailable: {err}"),
-    }
+/// Registers the platform credential store on first use. On Android this must run after
+/// Tauri has initialised the NDK context, so it isn't done at startup.
+fn ensure_store() -> Result<(), String> {
+    static STORE: OnceLock<Result<(), String>> = OnceLock::new();
+    STORE
+        .get_or_init(|| {
+            #[cfg(target_os = "windows")]
+            let store = windows_native_keyring_store::Store::new();
+            #[cfg(target_os = "android")]
+            let store = android_native_keyring_store::Store::new();
+            #[cfg(any(target_os = "windows", target_os = "android"))]
+            // The closure lets Arc<Store> coerce to the trait object set_default_store takes.
+            #[allow(clippy::redundant_closure)]
+            return store
+                .map(|store| keyring_core::set_default_store(store))
+                .map_err(|err| format!("Credential store unavailable: {err}"));
+            #[cfg(not(any(target_os = "windows", target_os = "android")))]
+            Err("No credential store for this platform yet".to_string())
+        })
+        .clone()
 }
 
 fn entry(name: &str) -> Result<Entry, String> {
     if !ALLOWED.contains(&name) {
         return Err(format!("Unknown secret: {name}"));
     }
+    ensure_store()?;
     Entry::new(SERVICE, name).map_err(|err| err.to_string())
 }
 

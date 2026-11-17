@@ -177,7 +177,10 @@ export class LexiSession extends TypedEmitter<SessionEvents> {
 
         if (mode === "voice") {
           connection.setVolume(this.#volume);
-          connection.setMuted(this.#state.muted);
+          // Conversations start unmuted. Only touch the mic when the user has muted: unmuting
+          // a just-connected WebRTC conversation re-acquires the microphone, which on Android
+          // reconfigures audio and can kill the agent's audio output.
+          if (this.#state.muted) connection.setMuted(true);
         }
         if (context) connection.sendContext(context);
 

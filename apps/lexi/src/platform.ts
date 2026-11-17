@@ -22,6 +22,11 @@ export async function hasApiKey(): Promise<boolean> {
   return (await credentials.get("elevenlabs")) !== undefined;
 }
 
+// --- Native voice support (plugins/lexi-voice): Android audio routing and keep-alive ---
+
+export const startNativeVoice = () => invoke<undefined>("plugin:lexi-voice|start_session");
+export const stopNativeVoice = () => invoke<undefined>("plugin:lexi-voice|stop_session");
+
 // --- HTTP outside the webview (no CORS), restricted to api.elevenlabs.io by capabilities ---
 
 export const httpFetch: FetchLike = (url, init) => tauriFetch(url, init);

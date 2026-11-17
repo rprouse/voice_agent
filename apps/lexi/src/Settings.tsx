@@ -87,7 +87,7 @@ export function Settings({ settings, onSaved, onClose }: SettingsProps) {
             autoComplete="off"
             spellCheck={false}
           />
-          <small>Stored in Windows Credential Manager, never in a file.</small>
+          <small>Stored in your device's secure credential store, never in a file.</small>
         </label>
         {settings.keySaved && (
           <button type="button" className="link-button" onClick={() => void removeKey()}>

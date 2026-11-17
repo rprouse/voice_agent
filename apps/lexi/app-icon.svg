@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Lexi app icon source. Regenerate all sizes with: pnpm tauri icon app-icon.svg -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4c86f0"/>
+      <stop offset="1" stop-color="#2450b8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <!-- Sound-wave bars, kept inside the central safe zone for Android adaptive icons -->
+  <g fill="#ffffff">
+    <rect x="292" y="432" width="64" height="160" rx="32"/>
+    <rect x="382" y="352" width="64" height="320" rx="32"/>
+    <rect x="480" y="292" width="64" height="440" rx="32"/>
+    <rect x="578" y="372" width="64" height="280" rx="32"/>
+    <rect x="668" y="452" width="64" height="120" rx="32"/>
+  </g>
+</svg>
