@@ -35,6 +35,10 @@ Mic test, WebRTC and WebSocket conversations, and interrupting the agent all wor
 
 **Decision so far:** use WebRTC only on Android. Tauri is viable on mobile with a small native layer (foreground service, audio/volume handling).
 
+### Follow-up in Stage 2 (the real app)
+
+Setting `MODE_IN_COMMUNICATION` and the loudspeaker as communication device from the plugin made Lexi silent (the agent could still hear the user), although routing and volume looked correct in `dumpsys audio`. With the plugin only running the foreground service and pointing the volume keys at the call stream, speaker echo, background and volume all pass on the Galaxy S23 Ultra. The WebView's WebRTC stack manages call audio itself.
+
 ### Not recorded
 
 Connection times, and whether a private agent (API key → token) works on Android.

@@ -9,7 +9,14 @@ import {
   type TranscriptEntry,
 } from "@lexi/core";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { credentials, hasApiKey, httpFetch, loadSettings } from "./platform.ts";
+import {
+  credentials,
+  hasApiKey,
+  httpFetch,
+  loadSettings,
+  startNativeVoice,
+  stopNativeVoice,
+} from "./platform.ts";
 
 // --- Settings ---
 
@@ -130,6 +137,25 @@ export function useVoiceActivity(session: LexiSession | null): AgentActivity | n
     };
   }, [session]);
   return activity;
+}
+
+/**
+ * Turns the native voice layer on while a voice conversation is connecting or connected,
+ * and off when it ends. Native failures are logged, not shown: voice still works without them.
+ */
+export function useNativeVoice(state: SessionState): void {
+  const voiceActive = state.mode === "voice" && state.connection !== "idle";
+  useEffect(() => {
+    if (!voiceActive) return;
+    startNativeVoice().catch((err: unknown) => {
+      console.warn("Native voice start failed", err);
+    });
+    return () => {
+      stopNativeVoice().catch((err: unknown) => {
+        console.warn("Native voice stop failed", err);
+      });
+    };
+  }, [voiceActive]);
 }
 
 export function useSessionError(session: LexiSession | null) {
