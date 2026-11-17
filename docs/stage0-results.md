@@ -41,6 +41,16 @@ Setting `MODE_IN_COMMUNICATION` and the loudspeaker as communication device from
 
 Lexi's voice was then intermittently silent even with correct routing (players active on the speaker at call volume 7/15). Cause: Android WebView's `mediaPlaybackRequiresUserGesture` (default true). The agent's audio starts 4-5 s after the Talk tap (token fetch plus WebRTC setup), which can fall outside the user-gesture window. Setting it to false in `MainActivity.onWebViewCreate` fixed it: four out of four voice starts audible, including after a cold start. The earlier silent result with call mode may have been this same issue; call mode wasn't retested because echo cancellation works without it.
 
+### Intermittent silence on Samsung (Stage 2, Nov 16, 2026)
+
+Even with autoplay allowed, Lexi was silent on some voice starts. The device log shows Android tearing down the WebView's shared low-latency AAudio (MMAP) output about a second after connecting (`AAUDIO_SERVICE_EVENT_DISCONNECTED`; the page logs "The AudioContext encountered an error from the audio device"). It happens on most starts; whether it hits the WebRTC renderer is timing, so the agent's `<audio>` element sometimes pauses and her audio arrives but is never rendered ("Packet buffer fully flushed").
+
+- `play()` on the paused element, or a second `<audio>` element on the same stream, does not help: Chrome renders remote WebRTC audio through one shared renderer.
+- Detaching the stream from the element and reattaching it rebuilds the renderer. `apps/lexi/src/audioGuard.ts` does this when the element pauses (recovered in ~1 s in testing).
+- Not calling `setMuted(false)` on every new voice conversation removes one unnecessary mic re-acquisition, but did not stop the disconnects.
+- One start was very quiet but not silent, with routing on the speaker throughout; cause unknown.
+- Untested next steps: put the phone in `MODE_IN_COMMUNICATION` before the WebView starts audio (so its own mode switch is a no-op); or play voice natively on Android (LiveKit/ElevenLabs Android SDK in the plugin) instead of through the WebView.
+
 ### Not recorded
 
 Connection times, and whether a private agent (API key → token) works on Android.

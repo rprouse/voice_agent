@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Chat } from "./Chat.tsx";
+import { useAgentAudioGuard } from "./audioGuard.ts";
 import { useLexiSession, useNativeVoice, useSessionState, useSettings } from "./hooks.ts";
 import { saveSettings } from "./platform.ts";
 import { Settings } from "./Settings.tsx";
@@ -8,7 +9,9 @@ export function App() {
   const { settings, reload } = useSettings();
   const session = useLexiSession(settings?.session ?? null);
   // Here rather than in Chat, so voice keeps its native support while Settings is open.
-  useNativeVoice(useSessionState(session));
+  const sessionState = useSessionState(session);
+  useNativeVoice(sessionState);
+  useAgentAudioGuard(sessionState);
   const [showSettings, setShowSettings] = useState(false);
   const [volume, setVolume] = useState<number | null>(null);
 

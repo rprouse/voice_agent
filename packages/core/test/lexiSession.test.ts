@@ -196,7 +196,7 @@ describe("LexiSession voice", () => {
     expect(transport.last.mode).toBe("voice");
     expect(transport.last.contexts[0]).toContain("User: Remember the number 7");
     expect(transport.last.greet).toBe(false); // continuing, so no greeting
-    expect(transport.last.mutes).toEqual([false]);
+    expect(transport.last.mutes).toEqual([]); // unmuted by default; the mic is left alone
     expect(session.state).toMatchObject({ connection: "connected", mode: "voice" });
   });
 
@@ -294,7 +294,7 @@ describe("LexiSession voice", () => {
     await session.startVoice();
     session.setMuted(true);
     session.setVolume(1.7);
-    expect(transport.last.mutes).toEqual([false, true]);
+    expect(transport.last.mutes).toEqual([true]);
     expect(transport.last.volumes).toEqual([0.5, 1]);
     expect(session.state.muted).toBe(true);
   });

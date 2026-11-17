@@ -21,6 +21,7 @@ export function Chat({ session, volume, onVolumeChange, onOpenSettings }: ChatPr
   }, [session, volume]);
 
   const voiceOn = state.mode === "voice" && state.connection !== "idle";
+  const voiceConnecting = voiceOn && state.connection === "connecting";
   const status =
     state.connection === "connecting"
       ? "Connecting…"
@@ -62,6 +63,13 @@ export function Chat({ session, volume, onVolumeChange, onOpenSettings }: ChatPr
       )}
 
       <footer className="footer">
+        {voiceOn && (
+          <VoiceStatus
+            connecting={voiceConnecting}
+            speaking={activity === "speaking"}
+            muted={state.muted}
+          />
+        )}
         <div className="voice-bar">
           <button
             className={voiceOn ? "talk talk-on" : "talk"}
@@ -69,9 +77,10 @@ export function Chat({ session, volume, onVolumeChange, onOpenSettings }: ChatPr
               dismiss();
               void (voiceOn ? session.stopVoice() : session.startVoice());
             }}
-            disabled={state.connection === "connecting"}
+            // A text conversation that is still connecting can't be interrupted by Talk.
+            disabled={state.connection === "connecting" && !voiceOn}
           >
-            {voiceOn ? "Stop talking" : "Talk"}
+            {voiceConnecting ? "Cancel" : voiceOn ? "Stop talking" : "Talk"}
           </button>
           <button
             onClick={() => {
@@ -104,6 +113,31 @@ export function Chat({ session, volume, onVolumeChange, onOpenSettings }: ChatPr
           placeholder={voiceOn ? "Type to Lexi while talking…" : "Message Lexi…"}
         />
       </footer>
+    </div>
+  );
+}
+
+/** Hard-to-miss voice state, so nobody starts talking before Lexi is listening. */
+function VoiceStatus({
+  connecting,
+  speaking,
+  muted,
+}: {
+  connecting: boolean;
+  speaking: boolean;
+  muted: boolean;
+}) {
+  const [kind, text] = connecting
+    ? (["connecting", "Connecting… wait before you speak"] as const)
+    : muted
+      ? (["muted", "Muted: Lexi can't hear you"] as const)
+      : speaking
+        ? (["speaking", "Lexi is speaking"] as const)
+        : (["listening", "Listening, go ahead"] as const);
+  return (
+    <div className={`voice-status voice-status-${kind}`} role="status" aria-live="polite">
+      <span className="voice-status-icon" aria-hidden="true" />
+      <span>{text}</span>
     </div>
   );
 }
