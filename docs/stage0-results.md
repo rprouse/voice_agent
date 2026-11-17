@@ -39,6 +39,8 @@ Mic test, WebRTC and WebSocket conversations, and interrupting the agent all wor
 
 Setting `MODE_IN_COMMUNICATION` and the loudspeaker as communication device from the plugin made Lexi silent (the agent could still hear the user), although routing and volume looked correct in `dumpsys audio`. With the plugin only running the foreground service and pointing the volume keys at the call stream, speaker echo, background and volume all pass on the Galaxy S23 Ultra. The WebView's WebRTC stack manages call audio itself.
 
+Lexi's voice was then intermittently silent even with correct routing (players active on the speaker at call volume 7/15). Cause: Android WebView's `mediaPlaybackRequiresUserGesture` (default true). The agent's audio starts 4-5 s after the Talk tap (token fetch plus WebRTC setup), which can fall outside the user-gesture window. Setting it to false in `MainActivity.onWebViewCreate` fixed it: four out of four voice starts audible, including after a cold start. The earlier silent result with call mode may have been this same issue; call mode wasn't retested because echo cancellation works without it.
+
 ### Not recorded
 
 Connection times, and whether a private agent (API key → token) works on Android.
